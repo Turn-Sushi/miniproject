@@ -28,13 +28,13 @@ const Nav = () => {
 				<div className="nav_box">
 					<ul className="navbar-nav mt-2 me-auto">
 						<li className="nav-item ">
-							<a className="nav-link" href="../user/login.html">로그인</a>
+							<a className="nav-link" href="/login">로그인</a>
 						</li>
 						<li className="nav-item">
-							<a className="nav-link" href="#">로그아웃</a>
+							<a className="nav-link" href="/">로그아웃</a>
 						</li>
 						<li className="nav-item">
-							<a className="nav-link" href="../user/signup.html">회원가입</a>
+							<a className="nav-link" href="/signup">회원가입</a>
 						</li>
 						<li className="nav-item">
 							<a className="nav-link" href="../user/user_view.html">회원정보</a>

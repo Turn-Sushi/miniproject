@@ -1,19 +1,24 @@
 from fastapi.middleware.cors import CORSMiddleware
-from db import findOne, save
-from fastapi import FastAPI, Depends, HTTPException, status, Response
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import EmailStr, BaseModel
+from db import findOne, findAll, save
 from kafka import KafkaProducer
 from settings import settings
-from pydantic import EmailStr, BaseModel
+from jose import jwt, JWTError, ExpiredSignatureError
+from datetime import datetime, timedelta, timezone
 import json
 import redis
-from datetime import datetime, timedelta, timezone
-from jose import jwt, JWTError, ExpiredSignatureError
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
+app = FastAPI(title="Mini Project API")
 
-app = FastAPI(title="Producer")
+# ================= CORS =================
+origins = [
+            "http://localhost:80",
+            "http://localhost:5173",
+            "http://localhost",
+          ]
 
-origins = [ "http://localhost:5173" ]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -22,124 +27,263 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ================= JWT =================
 security = HTTPBearer()
 
-class EmailModel(BaseModel):
-  email: EmailStr
-
-class CodeModel(BaseModel):
-  id: str
-
-class userInfo(BaseModel):
-  name : str
-  email : EmailStr
-  gender : str
-
 def set_token(email: str):
-  try:
-    sql = f"select `user_no` from mini.user where `email` = '{email}'"
+    sql = f"SELECT user_no FROM mini.user WHERE email = '{email}'"
     data = findOne(sql)
-    if data:
-      iat = datetime.now(timezone.utc)
-      exp = iat + (timedelta(minutes=settings.access_token_expire_minutes))
-      data = {
+
+    if not data:
+        return None
+
+    iat = datetime.now(timezone.utc)
+    exp = iat + timedelta(minutes=settings.access_token_expire_minutes)
+
+    payload = {
         "iss": "Team3",
         "sub": str(data["user_no"]),
         "iat": iat,
         "exp": exp
-      }
-      return jwt.encode(data, settings.secret_key, algorithm=settings.algorithm)
-  except JWTError as e:
-    print(f"JWT ERROR : {e}")
-  return None
+    }
+
+    return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+
 
 def get_payload(credentials: HTTPAuthorizationCredentials = Depends(security)):
-  if credentials.scheme == "Bearer":
     try:
-      payload = jwt.decode(credentials.credentials, settings.secret_key, algorithms=settings.algorithm)
-      exp = payload.get("exp")
+        payload = jwt.decode(
+            credentials.credentials,
+            settings.secret_key,
+            algorithms=[settings.algorithm]
+        )
+        return payload
 
-      now = datetime.now(timezone.utc).timestamp()
-      minutes, remaining_seconds = divmod(int(exp - now), 60)
-      return payload
-    except ExpiredSignatureError as e:
-      raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Token expired",
-      )
-    except JWTError as e:
-      raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid token",
-      )
-  return None
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired"
+        )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
 
-pd = KafkaProducer(
-  bootstrap_servers=settings.kafka_server,
-  value_serializer=lambda v: json.dumps(v).encode("utf-8")
+
+# ================= Kafka & Redis =================
+producer = KafkaProducer(
+    bootstrap_servers=settings.kafka_server,
+    value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
 
-client = redis.Redis(
-  host=settings.redis_host,
-  port=settings.redis_port,
-  db=settings.redis_db,
-  decode_responses=True
+redis_client = redis.Redis(
+    host=settings.redis_host,
+    port=settings.redis_port,
+    db=settings.redis_db,
+    decode_responses=True
 )
+
+# ================= 회원 =================
+
+class EmailModel(BaseModel):
+    email: EmailStr
+
+class CodeModel(BaseModel):
+    id: str
+
+class UserInfo(BaseModel):
+    name: str
+    email: EmailStr
+    gender: str
+
 
 @app.post("/emailCheck")
-def emailCheck(data: EmailModel):
-    print(data.email)
+def email_check(data: EmailModel):
     sql = f"SELECT COUNT(*) AS cnt FROM mini.user WHERE email = '{data.email}'"
     result = findOne(sql)
-    count = result['cnt']
-    if count > 0 :
-      return {"status" : False, "msg": "가입된 이메일이 존재합니다."}
-    return {"status" : True, "msg": "사용 가능한 이메일 입니다."}
+
+    if result["cnt"] > 0:
+        return {"status": False, "msg": "이미 가입된 이메일입니다."}
+
+    return {"status": True, "msg": "사용 가능한 이메일입니다."}
+
 
 @app.post("/signup")
-def signup(data: userInfo):
-    print(data)
-    checkSql = f"SELECT COUNT(*) AS cnt FROM mini.user WHERE email = '{data.email}'"
-    result = findOne(checkSql)
-    count = result['cnt']
-    if count > 0 :
-      return {"status" : False, "msg": "가입된 이메일이 존재합니다."}
-    
-    insertSql = f"""
+def signup(data: UserInfo):
+    sql = f"""
         INSERT INTO mini.user (name, email, gender)
-        VALUES ('{data.name}', '{data.email}',  '{data.gender}')
+        VALUES ('{data.name}', '{data.email}', '{data.gender}')
     """
-    save(insertSql)
-    return {"status" : True, "msg" : "회원가입 성공"}
+    save(sql)
+    return {"status": True, "msg": "회원가입 성공"}
+
 
 @app.post("/login")
-def producer(model: EmailModel):
-  print(model.email)
-  sql = f"select `user_no`, `name` from mini.user where `email` = '{model.email}'"
-  data = findOne(sql)
-  if data:
-    pd.send(settings.kafka_topic, dict(model))
-    pd.flush()
+def login(data: EmailModel):
+    sql = f"SELECT user_no FROM mini.user WHERE email = '{data.email}'"
+    user = findOne(sql)
+
+    if not user:
+        return {"status": False}
+
+    producer.send(settings.kafka_topic, dict(data))
+    producer.flush()
+
     return {"status": True}
-  return {"status": False}
+
 
 @app.post("/code")
-def code(model: CodeModel):
-  print(model.id)
-  result = client.get(model.id)
-  if result:
-    access_token = set_token(result)
-    if access_token:
-      client.delete(model.id)
-      return {"status": True, "access_token": access_token}
-  return {"status": False}
+def code(data: CodeModel):
+    result = redis_client.get(data.id)
 
-@app.post("/me")
-def me(payload = Depends(get_payload)):
-  if payload:
+    if not result:
+        return {"status": False}
+
+    token = set_token(result)
+
+    if token:
+        redis_client.delete(data.id)
+        return {"status": True, "access_token": token}
+
+    return {"status": False}
+
+
+@app.get("/me")
+def me(payload=Depends(get_payload)):
+    return {"status": True, "user_no": payload["sub"]}
+
+
+# ================= 게시판 =================
+
+class BoardCreate(BaseModel):
+    title: str
+    cont: str
+
+@app.get("/board")
+def board_list():
+    sql = """
+        SELECT b.board_no, b.title, u.name, b.regDate
+        FROM mini.board b
+        JOIN mini.user u ON b.user_no = u.user_no
+        WHERE b.delYn = 0
+        ORDER BY b.board_no DESC
+    """
+    rows = findAll(sql)
+    return {"status": True, "data": rows}
+
+
+@app.post("/board")
+def create_board(data: BoardCreate, payload=Depends(get_payload)):
+    user_no = payload["sub"]
+    sql = f"""
+        INSERT INTO mini.board (title, cont, user_no, delYn)
+        VALUES ('{data.title}', '{data.cont}', {user_no}, 0)
+    """
+    save(sql)
     return {"status": True}
-  return {"status": False}
 
-@app.get("/")
-def read_root():
-  return {"Hello": "World"}
+@app.put("/board/{no}")
+def update_board(no: int, data: BoardCreate, payload=Depends(get_payload)):
+    user_no = payload["sub"]
+    post = findOne(f"""
+        SELECT user_no FROM mini.board
+        WHERE board_no = {no} AND delYn = 0
+      """)
+    if not post:
+        raise HTTPException(404, "게시글이 없습니다.")
+    if str(post["user_no"]) != str(user_no):
+        raise HTTPException(403, "작성자가 아닙니다.")
+    sql = f"""
+        UPDATE mini.board
+        SET title = '{data.title}',
+            cont = '{data.cont}'
+        WHERE board_no = {no}
+    """
+    save(sql)
+    return {"status": True}
+
+@app.delete("/board/{no}")
+def delete_board(no: int, payload=Depends(get_payload)):
+    user_no = payload["sub"]
+    post = findOne(f"""
+        SELECT user_no FROM mini.board
+        WHERE board_no = {no} AND delYn = 0
+    """)
+    if not post:
+        raise HTTPException(404, "게시글이 없습니다.")
+    if str(post["user_no"]) != str(user_no):
+        raise HTTPException(403, "작성자가 아닙니다.")
+    sql = f"""
+        UPDATE mini.board SET delYn = 1 WHERE board_no = {no}
+      """
+    save(sql)
+    return {"status": True}
+
+
+# ================= 댓글 =================
+class CommentCreate(BaseModel):
+    board_no: int
+    cnt: str
+
+@app.get("/comment")
+def get_comments(board_no: int):
+    sql = f"""
+        SELECT bc.cnt_no, bc.board_no, bc.user_no,
+               bc.cnt, bc.regDate, u.name
+        FROM mini.board_cnt bc
+        JOIN mini.user u ON bc.user_no = u.user_no
+        WHERE bc.board_no = {board_no}
+          AND bc.delYn = 0
+        ORDER BY bc.cnt_no ASC
+      """
+    rows = findAll(sql)
+    return {"status": True, "data": rows}
+
+@app.post("/comment")
+def create_comment(data: CommentCreate, payload=Depends(get_payload)):
+    user_no = payload["sub"]
+    sql = f"""
+        INSERT INTO mini.board_cnt (board_no, user_no, cnt, delYn)
+        VALUES ({data.board_no}, {user_no}, '{data.cnt}', 0)
+      """
+    save(sql)
+    return {"status": True}
+
+@app.put("/comment/{no}")
+def update_comment(no: int, data: CommentCreate, payload=Depends(get_payload)):
+    user_no = payload["sub"]
+    comment = findOne(f"""
+        SELECT user_no FROM mini.board_cnt
+        WHERE cnt_no = {no} AND delYn = 0
+    """)
+    if not comment:
+        raise HTTPException(404, "댓글이 없습니다.")
+    if str(comment["user_no"]) != str(user_no):
+        raise HTTPException(403, "작성자가 아닙니다.")
+    sql = f"""
+        UPDATE mini.board_cnt
+        SET cnt = '{data.cnt}'
+        WHERE cnt_no = {no}
+    """
+    save(sql)
+    return {"status": True}
+
+@app.delete("/comment/{no}")
+def delete_comment(no: int, payload=Depends(get_payload)):
+    user_no = payload["sub"]
+    comment = findOne(f"""
+        SELECT user_no FROM mini.board_cnt
+        WHERE cnt_no = {no} AND delYn = 0
+    """)
+    if not comment:
+        raise HTTPException(404, "댓글이 없습니다.")
+
+    if str(comment["user_no"]) != str(user_no):
+        raise HTTPException(403, "작성자가 아닙니다.")
+
+    sql = f"""
+        UPDATE mini.board_cnt SET delYn = 1 WHERE cnt_no = {no}
+    """
+    save(sql)
+    return {"status": True}

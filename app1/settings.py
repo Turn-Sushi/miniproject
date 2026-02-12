@@ -1,11 +1,11 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-  # mariadb_user: str = "root"
-  # mariadb_password: str = "1234"
-  # mariadb_host: str = "mariadb"
-  # mariadb_database: str = "mini"
-  # mariadb_port: int = "3306"
+  mariadb_user: str = "root"
+  mariadb_password: str = "1234"
+  mariadb_host: str = "mariadb"
+  mariadb_database: str = "mini"
+  mariadb_port: int = "3306"
 
   kafka_topic: str = "miniProject2"
   kafka_server: str = "kafka:9092"
@@ -14,11 +14,11 @@ class Settings(BaseSettings):
   redis_port: int = 6379
   redis_db: int = 0
 
-  mariadb_user: str = "lnr"
-  mariadb_password: str = "lnr"
-  mariadb_host: str = "db.quadecologics.cloud"
-  mariadb_database: str = "mini"
-  mariadb_port: int = "5053"
+  # mariadb_user: str = "lnr"
+  # mariadb_password: str = "lnr"
+  # mariadb_host: str = "db.quadecologics.cloud"
+  # mariadb_database: str = "mini"
+  # mariadb_port: int = "5053"
 
   secret_key: str = "your-extremely-secure-random-secret-key"
   algorithm: str = "HS256"
