@@ -8,7 +8,7 @@ class Settings(BaseSettings):
   # mariadb_port: int = "3306"
 
   kafka_topic: str = "miniProject2"
-  kafka_server: str = "kafka:9092"
+  kafka_server: str = "192.168.0.171:9094"
 
   redis_host: str = "redis"
   redis_port: int = 6379

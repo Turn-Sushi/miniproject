@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
   kafka_topic: str = "miniProject2"
-  kafka_server: str = "localhost:9092"
+  kafka_server: str = "192.168.0.171:9094"
 
   mail_username: str
   mail_password: str
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
   use_credentials: bool = True
   validate_certs: bool = True
   
-  redis_host: str = "localhost"
+  redis_host: str = "redis"
   redis_port: int = 6379
   redis_db: int = 0
 
