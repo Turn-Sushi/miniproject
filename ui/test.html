@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>댓글 UI</title>
+
+  <!-- Bootstrap 5 -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .comment-box {
+      border: 1px solid #dee2e6;
+      border-radius: 10px;
+      padding: 15px;
+      background: #fff;
+    }
+    .profile-img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #ced4da;
+    }
+    .comment-input {
+      resize: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container mt-5" style="max-width: 720px;">
+
+  <!-- 게시글 상단 -->
+  <div class="mb-3">
+    <strong>02R김기현</strong> 님의 게시글
+    <div class="text-muted small mt-1">
+      ❤️ 좋아요 3 · 💬 댓글 0
+    </div>
+  </div>
+
+  <!-- 댓글 입력 -->
+  <div class="comment-box mb-4">
+    <div class="d-flex gap-3">
+      <div class="profile-img"></div>
+
+      <div class="flex-grow-1">
+        <textarea
+          class="form-control comment-input"
+          rows="2"
+          maxlength="3000"
+          placeholder="댓글을 입력하세요"
+        ></textarea>
+
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <small class="text-muted">10 / 3000</small>
+          <button class="btn btn-success btn-sm">등록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 댓글 목록 -->
+<div>
+  <div class="mb-3">
+
+    <!-- 댓글 1 -->
+    <div class="my-3 w-100 pb-2" style="border-bottom: 1px solid #dee2e6;">
+      
+      <!-- 작성자 + 버튼 -->
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="fw-bold">최윤우짱짱맨</div>
+
+        <div>
+          <button class="btn btn-outline-secondary btn-sm me-1">
+            수정
+          </button>
+          <button class="btn btn-outline-danger btn-sm">
+            삭제
+          </button>
+        </div>
+      </div>
+
+      <!-- 댓글 내용 -->
+      <div class="mt-1">
+        저는 귀여워요
+      </div>
+
+      <!-- 날짜 -->
+      <div class="text-muted small my-1">
+        2026.02.06 16:56
+      </div>
+    </div>
+
+    <!-- 댓글 2 -->
+    <div class="my-3 w-100 pb-2" style="border-bottom: 1px solid #dee2e6;">
+      
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="fw-bold">최가영 짱짱뿡뿡</div>
+
+        <div>
+          <button class="btn btn-outline-secondary btn-sm me-1">
+            수정
+          </button>
+          <button class="btn btn-outline-danger btn-sm">
+            삭제
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-1">
+        강사님 최최고~! 멋져요 수고하셨어요
+      </div>
+
+      <div class="text-muted small my-1">
+        2026.02.06 16:56
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+</div>
+
+</body>
+</html>
