@@ -1,17 +1,18 @@
-import { useLocation, useNavigate } from "react-router"
+import { useParams, useNavigate } from "react-router"
 import { useEffect, useState } from "react"
 import { api } from "@utils/network"
 
 const Board_view = () => {
     const navigate = useNavigate()
-    const { state } = useLocation()
+    const { no } = useParams()
     const loginUser = JSON.parse(localStorage.getItem("user"))
+
     const [board, setBoard] = useState({
         title: "",
         name: "",
-        cont: "",
+        cnt: "",
         regDate: "",
-        no: null
+        board_no: null
     })
 
     const [comments, setComments] = useState([])
@@ -21,54 +22,45 @@ const Board_view = () => {
 
     const onsubmit = e => e.preventDefault()
 
-    /* ---------------- 게시글 수정 이동 ---------------- */
-    const goEdit = (boardId) => {
-        Cookies.set("boardNo", btoa(JSON.stringify({ no: boardId })))
-        navigate("/board_edit")
-    }
-
-    /* ---------------- 게시글 삭제 ---------------- */
-    const delet = () => {
-        api.delete(`/board/${board.board_no}`, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("access_token")}`
-            }
-        })
-            .then(res => {
-                if (res.data.success) {
-                    alert("삭제 완료")
-                    navigate("/")
-                } else {
-                    alert("삭제 실패")
-                }
-            })
-    }
-
-    /* ---------------- 게시글 로드 ---------------- */
     const loadBoard = () => {
-        api.get(`/board/${state.no}`)
+        api.get(`/board/${no}`)
             .then(res => {
-                if (res.data.status) {setBoard(res.data.data)}
+                if (res.data.status) setBoard(res.data.data)
             })
     }
-    /* ---------------- 댓글 로드 ---------------- */
+
     const loadComments = () => {
-        api.get(`/comment?board_no=${state.no}`)
+        api.get(`/comment?board_no=${no}`)
             .then(res => {
-                if (res.data.status) {
-                    setComments(res.data.data)
-                }
+                if (res.data.status) setComments(res.data.data)
             })
     }
+
     useEffect(() => {
-        if (!state?.no) {
+        if (!no) {
             alert("잘못된 접근입니다")
             navigate("/")
             return
         }
         loadBoard()
         loadComments()
-    }, [])
+    }, [no])
+
+    const delet = () => {
+    api.delete(`/board/${board.board_no}`, {
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`
+        }
+    })
+    .then(res => {
+        if (res.data.success) {
+            alert("삭제 완료")
+            navigate("/")
+        } else {
+            alert("삭제 실패")
+        }
+    })
+}
 
     /* ---------------- 댓글 작성 ---------------- */
     const submitComment = () => {
@@ -171,7 +163,7 @@ const Board_view = () => {
                     ) : (
                     <div key={comment.cnt_no} className="comments my-3 w-100 pb-2">
                         <div className="d-flex align-items-start">
-                        <img src="/img01.jpg" className="rounded-circle me-3" width="50" height="50" alt="profile"/>
+                        <img src="./img01.jpg" className="rounded-circle me-3" width="50" height="50" alt="profile"/>
                         <div className="flex-grow-1">
                             <div className="d-flex justify-content-between align-items-center">
                             <div className="fw-bold">{comment.name}</div>

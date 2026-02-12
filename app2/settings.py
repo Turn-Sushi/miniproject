@@ -5,7 +5,7 @@ class Settings(BaseSettings):
   kafka_server: str = "kafka:9092"
 
   mail_username: str = "메일"
-  mail_password: str = "2차비번"
+  mail_password: str = "비번"
   mail_from: str = "메일"
   mail_port: int = 587
   mail_server: str = "smtp.gmail.com"

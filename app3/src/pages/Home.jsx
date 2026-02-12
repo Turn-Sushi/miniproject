@@ -49,15 +49,8 @@ const Home = () => {
           )}
 
           {boards.map(board => (
-            <tr
-              key={board.board_no}
-              style={{ cursor: "pointer" }}
-              onClick={() =>
-                navigate("/board_view", {
-                  state: { no: board.board_no }
-                })
-              }
-            >
+            <tr key={board.board_no} style={{ cursor: "pointer" }}
+              onClick={() => navigate(`/boardview/${board.board_no}`)}>
               <td>{board.board_no}</td>
               <td>{board.title}</td>
               <td>{board.regDate}</td>

@@ -28,9 +28,10 @@ const App = () => {
     {path: "login", element: <Login />},
     {path: "signup", element: <SignUp />},
     {path: "userview", element: <UserView />},
+    // {path="/boardview/:no" element: <BoardView />,
     {path: "useredit", element: <UserEdit />},
     {path: "boardadd", element: <BoardAdd />},
-    {path: "boardview", element: <BoardView />},
+    {path: "boardview/:no", element: <BoardView />},
     {path: "boardedit", element: <BoardEdit />},
   ]
   return (

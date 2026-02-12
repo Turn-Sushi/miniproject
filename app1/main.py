@@ -156,6 +156,20 @@ def me(payload=Depends(get_payload)):
 
 # ================= 게시판 =================
 
+@app.get("/board/{no}")
+def get_board(no: int):
+    sql = f"""
+        SELECT b.board_no, b.title, b.cnt AS cnt, u.name, b.regDate
+        FROM mini.board b
+        JOIN mini.user u ON b.user_no = u.user_no
+        WHERE b.board_no = {no} AND b.delYn = 0
+        """
+    row = findOne(sql)
+    if not row:
+        raise HTTPException(status_code=404, detail="게시글이 없습니다.")
+    return {"status": True, "data": row}
+
+
 class BoardCreate(BaseModel):
     title: str
     cont: str
@@ -177,7 +191,7 @@ def board_list():
 def create_board(data: BoardCreate, payload=Depends(get_payload)):
     user_no = payload["sub"]
     sql = f"""
-        INSERT INTO mini.board (title, cont, user_no, delYn)
+        INSERT INTO mini.board (title, cnt, user_no, delYn)
         VALUES ('{data.title}', '{data.cont}', {user_no}, 0)
     """
     save(sql)
