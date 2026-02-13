@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from "react-router"
 import { useEffect, useState } from "react"
 import { api } from "@utils/network"
-
 const Board_view = () => {
     const navigate = useNavigate()
     const { no } = useParams()
@@ -27,12 +26,20 @@ const Board_view = () => {
             .then(res => {
                 if (res.data.status) setBoard(res.data.data)
             })
+            .catch(err => {
+                console.error(err)
+                alert("게시글을 불러오는데 실패했습니다.")
+            })
     }
 
     const loadComments = () => {
         api.get(`/comment?board_no=${no}`)
             .then(res => {
                 if (res.data.status) setComments(res.data.data)
+            })
+            .catch(err => {
+                console.error(err)
+                alert("댓글을 불러오는데 실패했습니다.")
             })
     }
 
@@ -46,21 +53,28 @@ const Board_view = () => {
         loadComments()
     }, [no])
 
+    /* ---------------- 게시글 삭제 ---------------- */
     const delet = () => {
-    api.delete(`/board/${board.board_no}`, {
-        headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`
-        }
-    })
-    .then(res => {
-        if (res.data.success) {
-            alert("삭제 완료")
-            navigate("/")
-        } else {
-            alert("삭제 실패")
-        }
-    })
-}
+        if (!window.confirm("삭제하시겠습니까?")) return;
+
+        api.delete(`/board/${board.board_no}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("access_token")}`
+            }
+        })
+        .then(res => {
+            if (res.data.status) {
+                alert("삭제 완료")
+                navigate("/")
+            } else {
+                alert("삭제 실패")
+            }
+        })
+        .catch(err => {
+            console.error(err)
+            alert("삭제 중 오류가 발생했습니다.")
+        })
+    }
 
     /* ---------------- 댓글 작성 ---------------- */
     const submitComment = () => {
@@ -69,26 +83,42 @@ const Board_view = () => {
             return
         }
         api.post("/comment", {
-            board_no: state.no,
+            board_no: board.board_no,
             cnt: commentText
         }, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("access_token")}`
             }
-        }).then(() => {
-            setCommentText("")
-            loadComments()
+        }).then(res => {
+            if(res.data.status){
+                setCommentText("")
+                loadComments()
+            } else {
+                alert("댓글 작성 실패")
+            }
+        }).catch(err => {
+            console.error(err)
+            alert("댓글 작성 중 오류가 발생했습니다.")
         })
     }
 
     /* ---------------- 댓글 삭제 ---------------- */
     const deleteComment = (id) => {
         if (!window.confirm("삭제하시겠습니까?")) return
+
         api.delete(`/comment/${id}`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("access_token")}`
             }
-        }).then(() => loadComments())
+        })
+        .then(res => {
+            if(res.data.status) loadComments()
+            else alert("댓글 삭제 실패")
+        })
+        .catch(err => {
+            console.error(err)
+            alert("댓글 삭제 중 오류가 발생했습니다.")
+        })
     }
 
     /* ---------------- 댓글 수정 ---------------- */
@@ -98,13 +128,25 @@ const Board_view = () => {
     }
 
     const submitEdit = (id) => {
+        if(!editText.trim()){
+            alert("댓글 내용을 입력하세요")
+            return
+        }
+
         api.put(`/comment/${id}`, {cnt: editText}, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("access_token")}`
             }
-        }).then(() => {
-            setEditingId(null)
-            loadComments()
+        }).then(res => {
+            if(res.data.status){
+                setEditingId(null)
+                loadComments()
+            } else {
+                alert("댓글 수정 실패")
+            }
+        }).catch(err => {
+            console.error(err)
+            alert("댓글 수정 중 오류가 발생했습니다.")
         })
     }
 
@@ -136,7 +178,7 @@ const Board_view = () => {
 
             <div className="d-flex">
                 <div className="p-2 flex-fill d-grid">
-                    <button type="button" onClick={() => goEdit(board.board_no)} className="btn btn-primary">수정</button>
+                    <button type="button" onClick={() => navigate(`/board/edit/${board.board_no}`)} className="btn btn-primary">수정</button>
                 </div>
                 <div className="p-2 flex-fill d-grid">
                     <button onClick={delet} className="btn btn-primary">삭제</button>
@@ -156,41 +198,43 @@ const Board_view = () => {
                     <button className="btn btn-success btn-sm mx-2 mt-3" onClick={submitComment}>등록</button>
                 </div>
             </div>
+
             {/* ================= 댓글 목록 ================= */}
             <div>
                 {comments.map(comment => (
-                    comment.delYn === 1 ? (<div key={comment.cnt_no} className="comments my-3 w-100 pb-2 text-muted">삭제된 댓글입니다.</div>
+                    comment.delYn === 1 ? (
+                        <div key={comment.cnt_no} className="comments my-3 w-100 pb-2 text-muted">삭제된 댓글입니다.</div>
                     ) : (
-                    <div key={comment.cnt_no} className="comments my-3 w-100 pb-2">
-                        <div className="d-flex align-items-start">
-                        <img src="./img01.jpg" className="rounded-circle me-3" width="50" height="50" alt="profile"/>
-                        <div className="flex-grow-1">
-                            <div className="d-flex justify-content-between align-items-center">
-                            <div className="fw-bold">{comment.name}</div>
-                            {loginUser?.user_id == comment.user_no && (
-                                <div>
-                                    <button className="btn btn-outline-secondary btn-sm me-1" onClick={() => startEdit(comment)}>수정</button>
-                                    <button className="btn btn-outline-danger btn-sm" onClick={() => deleteComment(comment.cnt_no)}>삭제</button>
+                        <div key={comment.cnt_no} className="comments my-3 w-100 pb-2">
+                            <div className="d-flex align-items-start">
+                                <img src="./img01.jpg" className="rounded-circle me-3" width="50" height="50" alt="profile"/>
+                                <div className="flex-grow-1">
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <div className="fw-bold">{comment.name}</div>
+                                        {loginUser?.user_no === comment.user_no && (
+                                            <div>
+                                                <button className="btn btn-outline-secondary btn-sm me-1" onClick={() => startEdit(comment)}>수정</button>
+                                                <button className="btn btn-outline-danger btn-sm" onClick={() => deleteComment(comment.cnt_no)}>삭제</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {editingId === comment.cnt_no ? (
+                                        <div className="mt-2 d-flex">
+                                            <input className="form-control me-2" value={editText} 
+                                            onChange={(e) => setEditText(e.target.value)}/>
+                                            <button className="btn btn-success btn-sm" onClick={() => submitEdit(comment.cnt_no)}>저장</button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="mt-1">{comment.cnt}</div>
+                                            <div className="text-muted small my-1">
+                                                {comment.regDate}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
-                            )}
                             </div>
-                            {editingId === comment.cnt_no ? (
-                                <div className="mt-2 d-flex">
-                                <input className="form-control me-2" value={editText} 
-                                onChange={(e) => setEditText(e.target.value)}/>
-                                <button className="btn btn-success btn-sm" onClick={() => submitEdit(comment.cnt_no)}>저장</button>
-                            </div>
-                            ) : (
-                            <>
-                                <div className="mt-1">{comment.cnt}</div>
-                                <div className="text-muted small my-1">
-                                {comment.regDate}
-                                </div>
-                            </>
-                            )}
                         </div>
-                        </div>
-                    </div>
                     )
                 ))}
             </div>
