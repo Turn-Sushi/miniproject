@@ -1,19 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '@/utils/network.js';
-import axios from 'axios';
-import { useAuth } from '@/hooks/AuthProvider.jsx';
-import { useNavigate } from 'react-router';
+import React, { useState, useEffect } from 'react'
+import axios from 'axios'
+import { useAuth } from '@/hooks/AuthProvider.jsx'
+import { useNavigate } from 'react-router'
 
-axios.defaults.withCredentials = true;
+axios.defaults.withCredentials = true
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [loginId, setLoginId] = useState('');
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [loginId, setLoginId] = useState('')
   const [isLogin, setIsLogin] = useState(false)
 
-  const navigate = useNavigate();
-  // const { login } = useAuth();
+  const { setAuth } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (isLogin) {
@@ -23,18 +22,20 @@ const Login = () => {
             "http://localhost:8001/me", 
             {}, 
             { withCredentials: true }
-          );
+          )
+
           if (res.data.status) {
-            console.log("DB 기록 완료:", res.data.user);
-            navigate("/");
+            console.log("DB 기록 완료:", res.data.user)
+            setAuth(true)
+            navigate("/")
           }
         } catch (err) {
-          console.error("인증 정보 조회 실패", err);
+          console.error("인증 정보 조회 실패", err)
         }
-      };
-      loginMe();
+      }
+      loginMe()
     }
-  }, [isLogin]);
+  }, [isLogin, setAuth, navigate])
 
 
   const event1 = async e => {
@@ -45,19 +46,19 @@ const Login = () => {
         "http://localhost:8001/login",
         { email },
         { withCredentials: true }
-      );
+      )
 
       if (res.data.status) {
-        setLoginId(res.data.loginId);
-        alert("인증번호 발송 완료");
+        setLoginId(res.data.loginId)
+        alert("인증번호 발송 완료")
       } else {
-        alert("입력하신 Email은 존재하지 않습니다.");
+        alert("입력하신 Email은 존재하지 않습니다.")
       }
     } catch (err) {
-      console.error(err);
-      alert("서버 오류");
+      console.error(err)
+      alert("서버 오류")
     }
-  };
+  }
 
   const event2 = async e => {
     e.preventDefault()
@@ -67,17 +68,17 @@ const Login = () => {
       "http://localhost:8001/code",
       { loginId: loginId, id: code },
       { withCredentials: true }
-    );
+    )
 
     if (res.data.status) {
-      alert("인증되었습니다.");
+      alert("인증되었습니다.")
       setIsLogin(true)
-      setCode("");
+      setCode("")
     } else {
-      alert("!!!!!!!!!!!!!!!!!!!!!!인증 실패!!!!!!!!!!!!!!!!!!!!!!");
+      alert("!!!!!!!!!!!!!!!!!!!!!!인증 실패!!!!!!!!!!!!!!!!!!!!!!")
     }
     } catch (err) {
-      console.error(err);
+      console.error(err)
     } 
   };
 

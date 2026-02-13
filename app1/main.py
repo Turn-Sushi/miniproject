@@ -1,5 +1,5 @@
 from fastapi.middleware.cors import CORSMiddleware
-from db import findOne, save
+from db import findOne, findAll ,save
 from fastapi import FastAPI, Depends, HTTPException, status, Response, Request
 from kafka import KafkaProducer
 from settings import settings
@@ -10,11 +10,13 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError, ExpiredSignatureError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import math
 
 
 app = FastAPI(title="Producer")
 
-origins = [ "http://localhost:5173" ]
+origins = [ "http://localhost:5173",
+             "http://127.0.0.1:5173" ]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -39,7 +41,12 @@ class userInfo(BaseModel):
 class boardInfo(BaseModel) :
     title : str
     content : str
-    # writer : str
+    writer : str
+    
+class BoardCreate(BaseModel):
+    title: str
+    content: str
+    user_no: int
 
 def set_token(email: str):
   try:
@@ -99,6 +106,41 @@ client = redis.Redis(
   db=settings.redis_db,
   decode_responses=True
 )
+
+# [메인화면]
+@app.get("/home")
+def home(page: int = 1, size: int = 5, keyword: str = ""):
+    offset = (page - 1) * size
+
+    where = "WHERE b.delYn = 0"
+    if keyword:
+        where += f" AND b.title LIKE '%{keyword}%'"
+
+    sql = f"""
+        SELECT b.board_no, b.title, u.name, b.regDate
+        FROM mini.board b
+        JOIN mini.user u ON b.user_no = u.user_no
+        {where}
+        ORDER BY b.board_no DESC
+        LIMIT {size} OFFSET {offset}
+    """
+
+    data = findAll(sql)
+
+    countSql = f"""
+        SELECT COUNT(*) AS cnt
+        FROM mini.board b
+        {where}
+    """
+
+    total = findOne(countSql)["cnt"]
+    totalPages = math.ceil(total / size) if total > 0 else 1
+
+    return {
+        "status": True,
+        "data": data,
+        "totalPages": totalPages
+    }
 
 # [회원가입] : 이메일 중복 체크
 @app.post("/emailCheck")
@@ -203,26 +245,25 @@ def me(payload = Depends(get_payload)):
 # [게시글 작성]
 @app.post("/boardadd")
 def board_add(data: boardInfo) :
+    # 이거 처음에 user_no로 비교해줄라고 했는데 이렇게 바꾼 이유: 처음 글쓴 사람은 user_no 일치 못함 ㅋㅋ
     sqlSelect = f"""
-    SELECT u.user_no, b.user_no 
-    FROM user board.user_no AS b
-    INNER JOIN user.user_no AS u
-    ON(u.user_no = b.user_no)
-    WHERE email = '{data.writer}'
-    """
+        SELECT user_no
+        FROM mini.user
+        WHERE email = '{data.writer}'
+        AND delYn = 0
+      """
     userSelect = findOne(sqlSelect)
 
     if userSelect :
         find = userSelect['user_no']
         sqlInsert = f"""
-                        INSERT INTO board (title, cnt, user_no)
+                        INSERT INTO mini.board (title, cnt, user_no)
                         VALUES ('{data.title}', '{data.content}', {find})
                     """
         print(find)
         if save(sqlInsert) :
             return {"status" : True, "msg" : "게시글 등록 성공"}
     return {"status" : False, "msg" : "게시물 등록 실패"}
-
 
 @app.get("/")
 def read_root():
