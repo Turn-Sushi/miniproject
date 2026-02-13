@@ -2,11 +2,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
   kafka_topic: str = "miniProject2"
-  kafka_server: str = "localhost:9092"
+  kafka_server: str = "192.168.0.171:9094"
 
-  mail_username: str
-  mail_password: str
-  mail_from: str
+  mail_username: str = "nara1743@gmail.com"
+  mail_password: str = "kwjpfszhsmteulyy"
+  mail_from: str = "nara1743@gmail.com"
   mail_port: int = 587
   mail_server: str = "smtp.gmail.com"
   mail_from_name: str = "Team3"

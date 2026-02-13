@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '@/utils/network.js';
 import axios from 'axios';
 import { useAuth } from '@/hooks/AuthProvider.jsx';
@@ -8,43 +8,34 @@ axios.defaults.withCredentials = true;
 
 const Login = () => {
   const [email, setEmail] = useState('');
-  const [token, setToken] = useState("")
-  const [userNo, setUserNo] = useState("")
+  const [code, setCode] = useState('');
+  const [loginId, setLoginId] = useState('');
+  const [isLogin, setIsLogin] = useState(false)
 
   const navigate = useNavigate();
   // const { login } = useAuth();
 
-  const reset = () => {
-    setToken("")
-    setUserNo("")
-  }
+  useEffect(() => {
+    if (isLogin) {
+      const loginMe = async () => {
+        try {
+          const res = await axios.post(
+            "http://localhost:8001/me", 
+            {}, 
+            { withCredentials: true }
+          );
+          if (res.data.status) {
+            console.log("DB 기록 완료:", res.data.user);
+            navigate("/");
+          }
+        } catch (err) {
+          console.error("인증 정보 조회 실패", err);
+        }
+      };
+      loginMe();
+    }
+  }, [isLogin]);
 
-  // const handleLogin = async () => {
-  // try {
-  //     const response = await api.post("/login", {email});
-  //     if (response.data.status) {
-  //         const { access_token, user_id } = response.data;
-  //         login(access_token, user_id); 
-  //         navigate("/");
-  //     }
-  // } catch (error) {
-  //     alert(error.response?.data?.detail || "로그인 실패");
-  // }
-  // };
-
-  // const event1 = e => {
-  //   e.preventDefault()
-  //   console.log("코드 발급", e.target.email.value)
-  //   axios.post("http://localhost:8001/login", {email})
-  //   .then(res => {
-  //     console.log(res)
-  //     if(res.data.status) {
-  //       e.target.email.value = ""
-  //       alert("인증번호 발송 완료")
-  //     } else alert("입력하신 Email은 존재하지 않습니다.")
-  //   })
-  //   .catch(err => console.error(err))
-  // }
 
   const event1 = async e => {
     e.preventDefault()
@@ -57,8 +48,8 @@ const Login = () => {
       );
 
       if (res.data.status) {
+        setLoginId(res.data.loginId);
         alert("인증번호 발송 완료");
-        setEmail("");
       } else {
         alert("입력하신 Email은 존재하지 않습니다.");
       }
@@ -68,42 +59,29 @@ const Login = () => {
     }
   };
 
-  const event2 = e => {
+  const event2 = async e => {
     e.preventDefault()
-    console.log("토큰 발급", e.target.code.value)
-    axios.post("http://localhost:8001/code", {"id": e.target.code.value})
-    .then(res => {
-      console.log(res)
-      if(res.data.status) {
-        setToken(res.data.access_token)
-        alert("인증되었습니다.")
-        event3()
-      } else alert("!!!!!!!!인증 실패!!!!!!!!")
-      e.target.code.value = ""
-    })
-    .catch(err => console.error(err))
-  }
+    console.log("토큰 발급")
+    try {
+    const res = await axios.post(
+      "http://localhost:8001/code",
+      { loginId: loginId, id: code },
+      { withCredentials: true }
+    );
 
-  // const event3 = () => {
-  //   console.log("사용자 정보 요청")
-  //   axios.post("http://localhost:8001/me", {}, 
-  //     {headers: {"Authorization": `Bearer ${token}`}}
-  //   ).then(res => {
-  //     console.log(res)
-  //     if(res.data.status) {
-  //       const header = jwtDecode(token, { header: true })
-  //       const now = Math.floor(Date.now() / 1000)
-  //       if (header.exp && header.exp < now) {
-  //         alert("인증코드가 만료되었습니다.")
-  //         reset()
-  //         return
-  //       }        
-  //       setUserNo(res.data.userNo)
-  //       setEmail(res.data.email)
-  //     } else alert("인증코드 생성 실패")
-  //   })
-  //   .catch(err => console.error(err))
-  // }
+    if (res.data.status) {
+      alert("인증되었습니다.");
+      setIsLogin(true)
+      setCode("");
+    } else {
+      alert("!!!!!!!!!!!!!!!!!!!!!!인증 실패!!!!!!!!!!!!!!!!!!!!!!");
+    }
+    } catch (err) {
+      console.error(err);
+    } 
+  };
+
+
 
   return (
     <div className="container mt-3 box_size">
@@ -117,7 +95,8 @@ const Login = () => {
         placeholder="이메일를 입력하세요." 
         name="email"
         value={email}
-        onChange={e => setEmail(e.target.value)} 
+        onChange={e => setEmail(e.target.value)}
+        required
         />
 			</div>
 			<div className="d-flex mb-4">
@@ -129,12 +108,22 @@ const Login = () => {
 				</div>
 			</div>
 		</form>
-		<form>
-			<div className="mb-3 d-flex">
-				<input type="password" className="form-control" id="pwd" placeholder="인증번호를 입력하세요" name="pwd" />
-				<button type="submit" className="w-25 btn btn-primary">인증</button>
-			</div>
-		</form>
+    {loginId && (
+      <form onSubmit={event2}>
+        <div className="mb-3 d-flex">
+          <input 
+            type="password" 
+            className="form-control" 
+            id="pwd" placeholder="인증번호를 입력하세요" 
+            name="pwd" 
+            value={code}
+            onChange={e=>setCode(e.target.value)}
+            required
+            />
+          <button type="submit" className="w-25 btn btn-primary">인증</button>
+        </div>
+      </form>
+    )}
 	</div>
   )
 }

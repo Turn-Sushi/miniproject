@@ -130,46 +130,64 @@ def signup(data: userInfo):
 
 # [로그인] : UUID + Redis 저장
 @app.post("/login")
-def producer(model: EmailModel):
+def producer(model: EmailModel , modelC: CodeModel):
   print(model.email)
   sql = f"select `user_no`, `name` from mini.user where `email` = '{model.email}'"
   data = findOne(sql)
   if not data:
       return {"status": False}
   
-  loginId = str(uuid.uuid4().hex)
+  loginId = str(uuid.uuid4())
   print(loginId)
 
+  # code = str(random.randint(100000, 999999))
+
+  client.set(
+      f"login:{loginId}",
+      json.dumps({
+          "email": model.email,
+          "id": modelC.id
+      }),
+      ex=180
+  )
+
   pd.send(settings.kafka_topic, {
-        "event": "generate_code",
+        "event": "login_request",
         "email": model.email,
-        "loginId": loginId
+        "loginId": modelC.loginId
     })
   pd.flush()
 
-  return {"status": True, "loginId": loginId}
+  # print("인증코드:", code)
 
+  return {
+      "status": True,
+      "loginId": loginId
+  }
 
 # [로그인] : UUID 기반 검증 + JWT 발급
 @app.post("/code")
 def code(model: CodeModel, response: Response):
 
   key = f"login:{model.loginId}"
-  storedData = client.get(key)
+  data = client.get(key)
 
-  if not storedData:
-        return {"status": False, "msg": "인증 시간 만료"}
+  if not data:
+        return {"status": False, "msg": "만료 또는 잘못된 요청"}
   
-  data = json.loads(storedData)
+  data = json.loads(data)
 
   if data["id"] != model.id:
-    return {"status": False, "msg": "인증번호 불일치"}
+    print(model.id)
+    return {"status": False, "msg": "인증코드 불일치"}
   
   access_token = set_token(data["email"])
 
   if not access_token:
-    return {"status": False}
+      return {"status": False}
   
+  client.delete(key)
+
   response.set_cookie(
       key="access_token",
       value=access_token,
@@ -179,14 +197,17 @@ def code(model: CodeModel, response: Response):
       max_age=60 * settings.access_token_expire_minutes
   )
 
-  client.delete(key)
+  pd.send(settings.kafka_topic, {
+        "event": "login_success",
+        "email": data["email"]
+    })
+  pd.flush()
+
   return {"status": True}
- 
 
 # [로그인] : JWT → DB 기록
 @app.post("/me")
 def me(payload = Depends(get_payload)):
-  print(payload)
   if not payload:
     return {"status" : False}
   user_no = payload.get("sub")
