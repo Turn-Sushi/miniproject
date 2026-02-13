@@ -25,13 +25,13 @@ const App = () => {
   const paths = [
     {path: "/", element: <Home />},
     {path: "*", element: <NotFound />},
-    {path: "login", element: <Login />},
-    {path: "signup", element: <SignUp />},
-    {path: "userview", element: <UserView />},
-    {path: "useredit", element: <UserEdit />},
-    {path: "boardadd", element: <BoardAdd />},
-    {path: "boardview", element: <BoardView />},
-    {path: "boardedit", element: <BoardEdit />},
+    {path: "/login", element: <Login />},
+    {path: "/signup", element: <SignUp />},
+    {path: "/userview", element: <UserView />},
+    {path: "/useredit", element: <UserEdit />},
+    {path: "/boardadd", element: <BoardAdd />},
+    {path: "/boardview", element: <BoardView />},
+    {path: "/boardedit", element: <BoardEdit />},
   ]
   return (
     <BrowserRouter>

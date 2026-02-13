@@ -43,6 +43,7 @@ dependencies = [
     { name = "mariadb" },
     { name = "pydantic-settings" },
     { name = "python-jose" },
+    { name = "python-multipart" },
     { name = "redis" },
 ]
 
@@ -53,6 +54,7 @@ requires-dist = [
     { name = "mariadb", specifier = ">=1.1.14" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "python-jose", specifier = ">=3.5.0" },
+    { name = "python-multipart", specifier = ">=0.0.22" },
     { name = "redis", specifier = ">=7.1.1" },
 ]
 

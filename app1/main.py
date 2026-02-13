@@ -1,6 +1,6 @@
 from fastapi.middleware.cors import CORSMiddleware
-from db import findOne, save
-from fastapi import FastAPI, Depends, HTTPException, status, Response
+from db import findOne, save, add_key
+from fastapi import FastAPI, Depends, HTTPException, status, Response, Request, File, UploadFile, Form
 from kafka import KafkaProducer
 from settings import settings
 from pydantic import EmailStr, BaseModel
@@ -9,9 +9,28 @@ import redis
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError, ExpiredSignatureError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
+import urllib.parse
+import base64
+import uuid
+import shutil
+from pathlib import Path
+from typing import List
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Producer")
+
+# 업로드한 파일 위치를 정하기위해 선언
+# 이녀석이 있어야 프로필 파일 사진이 보임.... 
+# 단, docker containers에 올릴때는 확인 필요....
+# compose.yml 파일 참조!!!
+# volumes:
+#   uploads:
+#   mysql:
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads"
+)
 
 origins = [ "http://localhost:5173" ]
 app.add_middleware(
@@ -143,3 +162,119 @@ def me(payload = Depends(get_payload)):
 @app.get("/")
 def read_root():
   return {"Hello": "World"}
+
+
+# 사용자 상세(사용자 불러오기)
+@app.post("/selUser")
+def usrt_delYn(request: Request):
+  selectUser = request.cookies.get("selectUser")
+  if not selectUser:
+    return {"status": False, "msg": "회원정보를 불러오는데 실패하였습니다."}
+  
+  selectUser = base64Decode(selectUser)
+  decoded = urllib.parse.unquote(selectUser)
+  data = json.loads(decoded)
+  sql =f"""
+      SELECT A.`user_no` AS userNo, A.`name`, A.`email`, A.`gender`, A.`regDate`, A.`modDate`, B.`pro_no` AS proNo, B.`origin`, B.`fileName`
+      FROM `mini`.`user` AS A
+      INNER JOIN `mini`.`user_pr` AS B
+        ON A.`pro_no` = B.`pro_no`
+        AND A.`user_no` = B.`user_no`
+      WHERE A.`email` = '{data["email"]}' AND A.`user_no` = '{data["user_no"]}';
+    """
+  if data: 
+    data = findOne(sql)
+  return {"status":data}
+
+# 사용자 탈퇴(사용자 삭제)
+@app.post("/userDelYn")
+def usrt_delYn(request: Request):
+  userInfo = request.cookies.get("userInfo")
+  if not userInfo:
+    return {"status": False, "msg": "탈퇴에 실패하였습니다."}
+  
+  userInfo = base64Decode(userInfo)
+  decoded = urllib.parse.unquote(userInfo)
+  data = json.loads(decoded)
+  sql =f"""
+      UPDATE mini.`user` 
+      SET `delYn` = '{data["delYn"]}' 
+      WHERE `user_no` = '{data["user_no"]}'
+    """
+  if data: 
+    save(sql)
+  return {"status":data, "msg": "탈퇴 되었습니다.\n감사합니다. 안녕히 가십시오."}
+
+# 사용자 수정(사용자 정보 수정)
+@app.post("/userUpdate")
+def usrt_delYn(request: Request):
+  userUp = request.cookies.get("userUp")
+  if not userUp:
+    return {"status": False, "msg": "수정에 실패하였습니다."}
+  
+  userUp = base64Decode(userUp)
+  decoded = urllib.parse.unquote(userUp)
+  data = json.loads(decoded)
+  sql =f"""
+      UPDATE mini.`user` SET
+        `pro_no` = '{data["proNo"]}',
+        `name` = '{data["name"]}',
+        `email` = '{data["email"]}',
+        `gender` = '{data["gender"]}'
+      WHERE `user_no` = '{data["userNo"]}'
+    """
+  if data: 
+    save(sql)
+  return {"status":data, "msg": "수정이 완료되었습니다.\n감사합니다."}
+
+# 프로필 업로드용으로 추가
+UPLOAD_DIR = Path("uploads")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+MAX_FILE_SIZE = 10 * 1024
+
+def checkDir():
+  UPLOAD_DIR.mkdir(exist_ok=True)
+
+# 파일 업로드 영역
+def saveFile(file, userNo):
+  checkDir()
+  origin = file.filename
+  ext = origin.split(".")[-1].lower()
+  newName = f"{uuid.uuid4().hex}.{ext}"
+  sql = f"""
+        INSERT into mini.`user_pr` (`user_no`, `origin`, `ext`, `fileName`, `cntType`) 
+        VALUE ('{userNo}', '{origin}', '{ext}', '{newName}', '{file.content_type}')
+      """
+  
+  result = add_key(sql)
+  if result[0]:
+    path = UPLOAD_DIR / newName
+    with path.open("wb") as f:
+      shutil.copyfileobj(file.file, f)
+    return result[1]
+  return 0
+
+# 최종 업로드
+@app.post("/uploadFile")
+def upload(files: List[UploadFile] = File(), userNo: int = Form()):
+  sql = f"""
+        SELECT `pro_no`
+        FROM mini.`user_pr`
+        WHERE `user_no` = '{userNo}'
+        ORDER BY modDate DESC
+        LIMIT 1;
+      """
+  arr = []
+  for file in files:
+    result = saveFile(file, userNo)
+    if not result:
+      return {"status": False, "msg": "프로필 등록에 실패하였습니다."}
+    arr.append(result)
+  # 파일 업로드 후 userNo를 이용하여 proNo를 불러와서 전달
+  proNo = findOne(sql)
+  return {"status": True, "result": arr, "proNo": proNo["pro_no"]}
+
+# 사용자 화면에 전부 사용중
+def base64Decode(data):
+  encoded = urllib.parse.unquote(data)
+  return base64.b64decode(encoded).decode("utf-8")
