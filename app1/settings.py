@@ -1,28 +1,22 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-  # mariadb_user: str = "root"
-  # mariadb_password: str = "1234"
-  # mariadb_host: str = "mariadb"
-  # mariadb_database: str = "mini"
-  # mariadb_port: int = "3306"
+  mariadb_user: str
+  mariadb_password: str
+  mariadb_host: str
+  mariadb_database: str
+  mariadb_port: int
 
-  kafka_topic: str = "miniProject2"
-  kafka_server: str = "192.168.0.171:9094"
+  kafka_topic: str
+  kafka_server: str
 
-  redis_host: str = "redis"
-  redis_port: int = 6379
-  redis_db: int = 0
+  redis_host: str
+  redis_port: int
+  redis_db: int
 
-  mariadb_user: str = "lnr"
-  mariadb_password: str = "lnr"
-  mariadb_host: str = "db.quadecologics.cloud"
-  mariadb_database: str = "mini"
-  mariadb_port: int = "5053"
-
-  secret_key: str = "your-extremely-secure-random-secret-key"
-  algorithm: str = "HS256"
-  access_token_expire_minutes: int = 30
+  secret_key: str
+  algorithm: str
+  access_token_expire_minutes: int
 
   model_config = SettingsConfigDict(
     env_file=".env",
