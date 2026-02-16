@@ -7,7 +7,9 @@ export default defineConfig({
   plugins: [react()],
   base: "/",
   server: {
-    host: true,
+    host: '0.0.0.0',
+    port: 5173,
+    allowedHosts: ['localhost','quadecologics.cloud'],
   },
   resolve: {
     alias: {
@@ -16,6 +18,7 @@ export default defineConfig({
       '@styles': fileURLToPath(new URL('./src/styles', import.meta.url)),
       '@assets': fileURLToPath(new URL('./src/assets', import.meta.url)),
       '@hooks': fileURLToPath(new URL('./src/hooks', import.meta.url)),
+      '@utils': fileURLToPath(new URL('./src/utils', import.meta.url)),
     }
-  }
+  },
 })
