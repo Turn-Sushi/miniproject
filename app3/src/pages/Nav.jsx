@@ -41,7 +41,7 @@ const Nav = () => {
                     {/* 여기에 fileName을 불러와야함.... 현재 주석처리해둠 */}
                     {/* <img
                       src={
-                        comment.fileName
+                        fileName
                         ? `${API_URL}/uploads/${fileName}`
                         : "/images/img01.jpg"
                       }
