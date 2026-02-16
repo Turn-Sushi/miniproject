@@ -4,6 +4,7 @@ import { useAuth } from '@hooks/AuthProvider.jsx'
 
 const Nav = () => {
   const navigate = useNavigate();
+  
   // AuthProvider의 value={{ isLogin, login, logout }} 와 이름을 맞춰야 함!
   const { isLogin, clearAuth } = useAuth();
   const [fileName, setFileName] = useState("")
