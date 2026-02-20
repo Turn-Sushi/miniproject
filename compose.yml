@@ -1,16 +1,16 @@
 services:
   app1:
     container_name: app1
-    build:
-      context: .
-      dockerfile: dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: dockerfile
     image: uv:1
     ports:
-      - 8301:8000
+      - 8001:8000
     networks:
       - my-bridge
     depends_on:
-      - mariadb
+      - maria
       - kafka
       - redis
     working_dir: /workspace
@@ -27,11 +27,10 @@ services:
     container_name: app2
     image: uv:1
     ports:
-      - 8302:8000
+      - 8002:8000
     networks:
       - my-bridge
     depends_on:
-      - mariadb
       - kafka
       - redis
     working_dir: /workspace
@@ -47,7 +46,7 @@ services:
     container_name: app3
     image: node:24.13.0
     ports:
-      - 8300:5173
+      - 80:5173
     networks:
       - my-bridge
     working_dir: /workspace
@@ -61,12 +60,12 @@ services:
       - ./app3/.env:/workspace/.env:rw
     command: ["sleep", "infinity"]
   
-  mariadb:
-    container_name: mariadb3
+  maria:
+    container_name: maria
     image: mariadb:12.1.2
     restart: always
     ports:
-      - 8306:3306
+      - 13306:3306
     networks:
       - my-bridge
     volumes:
@@ -95,7 +94,7 @@ services:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://192.168.0.230:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://192.168.0.171:9094
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER

@@ -80,7 +80,7 @@ useEffect(() => {
           setUserId(res.data.user); // 여기서 내 번호(예: 2)가 저장됨
         }
       })
-      .catch(err => console.error("로그인 정보 없음",err))
+      .catch(err => console.error("로그인 정보 없음"))
 
   loadBoard();
   loadComments();
@@ -208,12 +208,16 @@ useEffect(() => {
         </div>
       </form>
       <div className="d-flex">
-        <div className="p-2 flex-fill d-grid">
-          <button type="button" onClick={UserClick} className="btn btn-primary">수정</button>
-        </div>
-        <div className="p-2 flex-fill d-grid">
-          <button onClick={delet} className="btn btn-primary">삭제</button>
-        </div>
+        { userId &&
+          <>
+            <div className="p-2 flex-fill d-grid">
+              <button type="button" onClick={UserClick} className="btn btn-primary">수정</button>
+            </div>
+            <div className="p-2 flex-fill d-grid">
+              <button onClick={delet} className="btn btn-primary">삭제</button>
+            </div>
+          </>
+        }        
         <div className="p-2 flex-fill d-grid">
           <button onClick={() => navigate("/")} className="btn btn-primary">취소</button>
         </div>

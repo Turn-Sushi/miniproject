@@ -65,32 +65,33 @@ const UserEdit = () => {
   // 회원 정보 수정 전 파일 업로드
   const fileUpload = async e => {
     e.preventDefault()
-    console.log("프로필 등록 요청")
-    const formData = new FormData();
-    formData.append("userNo", userNo)
-    console.log("userNo", userNo)
-    files.forEach(file => formData.append("files", file))
-    console.log("files", files)
-    await axios.post(`${API_URL}/uploadFile`, formData, config)
-    .then(res => {
-      if(res.data.status) {
-          console.log(res.data.status)
-          // 회원정보 등록
-          const newProNo = res.data.proNo
-          setProNo(newProNo)
-          // 회원정보 수정 시작
-          submitE(newProNo)
-        } else {
-          alert(res.data.msg)
-        }
-    })
-    .catch(err => console.error(err))
+    // console.log("프로필 등록 요청")
+    if(files.length > 0) {
+      const formData = new FormData();
+      formData.append("userNo", userNo)
+      files.forEach(file => formData.append("files", file))
+      await axios.post(`${API_URL}/uploadFile`, formData, config)
+      .then(res => {
+        if(res.data.status) {
+            // 회원정보 등록
+            const newProNo = res.data.proNo
+            setProNo(newProNo)
+            // 회원정보 수정 시작
+            submitE(newProNo)
+          } else {
+            alert(res.data.msg)
+          }
+      })
+      .catch(err => console.error(err))
+    } else {
+      submitE(proNo)
+    }
   }
 
   // 회원정보 수정
   const submitE = newProNo => {
     const params = { userNo, proNo: newProNo, name, email, gender, regDate, modDate }
-    console.log(params)
+    // console.log(params)
 
     const userUp = {
       userNo: userNo,
@@ -104,10 +105,12 @@ const UserEdit = () => {
     setCookie("userUp", window.btoa(encodeURI(JSON.stringify(userUp))))
     // 서버에 저장 요청
     axios.post(`${API_URL}/userUpdate`,{}, { withCredentials: true } )
-      .then(res => alert(res.data.msg))
+      .then(res => {
+        alert(res.data.msg)
+        if(res.data.status) navigate("/userview")
+      })
       .catch(err => console.error(err));
 
-    navigate("/userview", {state:params})
   }
 
   useEffect(()=>{

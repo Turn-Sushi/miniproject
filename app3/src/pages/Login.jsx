@@ -14,7 +14,7 @@ const Login = () => {
   // URL을 변경하기 위한 선언 
   const API_URL = import.meta.env.VITE_APP_FASTAPI_URL
 
-  const { setAuth } = useAuth()
+  const { setAuth, setProImage } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -28,8 +28,9 @@ const Login = () => {
           )
 
           if (res.data.status) {
-            console.log("DB 기록 완료:", res.data.user)
+            // console.log("DB 기록 완료:", res.data.user)
             setAuth(true)
+            setProImage(res.data.fileName)
             navigate("/")
           }
         } catch (err) {
@@ -43,7 +44,7 @@ const Login = () => {
 
   const event1 = async e => {
     e.preventDefault()
-    console.log("코드 발급", e.target.email.value)
+    // console.log("코드 발급", e.target.email.value)
     try {
       const res = await axios.post(
         `${API_URL}/login`,
@@ -65,14 +66,14 @@ const Login = () => {
 
   const event2 = async e => {
     e.preventDefault()
-    console.log("토큰 발급")
+    // console.log("토큰 발급")
     try {
     const res = await axios.post(
       `${API_URL}/code`,
       { loginId: loginId, id: code },
       { withCredentials: true }
     )
-    console.log(loginId, code)
+    // console.log(loginId, code)
 
     if (res.data.status) {
       alert("인증되었습니다.")

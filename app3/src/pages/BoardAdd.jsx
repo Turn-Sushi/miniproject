@@ -7,29 +7,30 @@ const BoardAdd = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
 
-useEffect(() => {
-  api.post("/me")
-    .then(res => {
-      if (res.data.status) {
-        const userData = localStorage.getItem("user");
-        try {
-          const parsed = JSON.parse(userData);
-          // 데이터가 객체이고 email이 있을 때만 저장
-          if (parsed && typeof parsed === 'object' && parsed.email) {
-            setUserEmail(parsed.email);
-          } else {
-            // 콘솔에 true가 찍혔다면 이리로 들어옵니다.
-            console.error("이메일 정보가 없습니다. 현재 값:", parsed);
-            // 테스트용: 강제로 이메일을 세팅해보거나 다시 로그인을 시킵니다.
-          }
-        } catch (e) {
-          console.error("로컬스토리지 데이터 파싱 에러");
-        }
-      } else {
-        navigate("/login");
-      }
-    });
-}, [navigate]);
+// useEffect(() => {
+//   api.post("/me")
+//     .then(res => {
+//       if (!res.data.status)
+        // {
+        // const userData = localStorage.getItem("user");
+        // try {
+        //   const parsed = JSON.parse(userData);
+        //   // 데이터가 객체이고 email이 있을 때만 저장
+        //   if (parsed && typeof parsed === 'object' && parsed.email) {
+        //     setUserEmail(parsed.email);
+        //   } else {
+        //     // 콘솔에 true가 찍혔다면 이리로 들어옵니다.
+        //     console.error("이메일 정보가 없습니다. 현재 값:", parsed);
+        //     // 테스트용: 강제로 이메일을 세팅해보거나 다시 로그인을 시킵니다.
+        //   }
+        // } catch (e) {
+        //   console.error("로컬스토리지 데이터 파싱 에러");
+        // }
+      // } else {
+      //   navigate("/login");
+      // }
+//     });
+// }, []);
 
   const submitBtn = async (e) => {
     e.preventDefault();

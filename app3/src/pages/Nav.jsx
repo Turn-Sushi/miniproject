@@ -1,19 +1,27 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@hooks/AuthProvider.jsx'
+import axios from 'axios'
+axios.defaults.withCredentials = true
 
 const Nav = () => {
   const navigate = useNavigate();
   
   // AuthProvider의 value={{ isLogin, login, logout }} 와 이름을 맞춰야 함!
-  const { isLogin, clearAuth } = useAuth();
-  const [fileName, setFileName] = useState("")
+  const { isLogin, clearAuth, proImage } = useAuth();
 
   const handleLogout = () => {
-    clearAuth();
+    // axios.post("/")
     alert('로그아웃 되었습니다.');
+    clearAuth();
     navigate('/');
   };
+
+  const API_URL = import.meta.env.VITE_APP_FASTAPI_URL 
+  // 프로필 이미지 경로 설정
+  const imageSrc = proImage 
+    ? `${API_URL}/uploads/${proImage}` 
+    : "/images/img01.jpg" 
 
   return (
     <nav className="navbar navbar-expand-lg bg-body-tertiary">
@@ -55,7 +63,7 @@ const Nav = () => {
                       style={{ width: '40px', height: '40px' }}
                       /> */}
                     <img
-                      src="/images/img01.jpg"
+                      src={imageSrc}
                       className="border user_pt_nav mt-0 object-fit-cover rounded-circle"
                       style={{ width: '40px', height: '40px' }}
                     />

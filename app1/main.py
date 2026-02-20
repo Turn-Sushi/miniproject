@@ -36,7 +36,7 @@ app.mount(
   name="uploads"
 )
 
-origins = [ settings.vite_react_url ]
+origins = [ settings.react_url ]
 
 app.add_middleware(
   CORSMiddleware,
@@ -54,7 +54,14 @@ security = HTTPBearer()
 
 def set_token(email: str):
   try:
-    sql = f"select `user_no` from mini.user where `email` = '{email}'"
+    # sql = f"select `user_no` from mini.user where `email` = '{email}'"
+    sql = f"""
+      SELECT u.`user_no`, IFNULL(up.`fileName`, '') AS fileName
+        FROM  mini.`user` AS u 
+        LEFT OUTER JOIN mini.`user_pr` AS up
+          ON (u.`pro_no` = up.`pro_no`)
+        WHERE  u.`email` = '{email}'
+    """
     data = findOne(sql)
     if data:
       iat = datetime.now(timezone.utc)
@@ -62,6 +69,7 @@ def set_token(email: str):
       data = {
         "iss": "Team3",
         "sub": str(data["user_no"]),
+        "pro": str(data["fileName"]),
         "iat": iat,
         "exp": exp
       }
@@ -94,6 +102,22 @@ def get_payload(request: Request):
       status_code=status.HTTP_401_UNAUTHORIZED,
       detail="Invalid token"
     )
+
+def get_payload2(request: Request):
+  token = request.cookies.get("access_token")
+
+  if not token:
+    return {"status": False, "msg": "Not authenticated"}
+
+  try:
+    payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    return {"status": True, "payload": payload }
+
+  except ExpiredSignatureError:
+    return {"status": False, "msg": "Token expired"}
+
+  except JWTError:
+    return {"status": False, "msg": "Invalid token"}
 
 
 # ================= 외부 서비스 연결 =================
@@ -169,12 +193,12 @@ def usrt_view(payload = Depends(get_payload)):
   user_no = payload.get("sub")
   sql = f"""
         SELECT u.`user_no` AS userNo, u.`name`, u.`email`, u.`gender`, 
-               u.`regDate`, u.`modDate`, up.`pro_no` AS proNo, 
+               DATE_FORMAT(u.`regDate`, '%Y-%m-%d %H:%i:%s') as regDate, DATE_FORMAT(u.`modDate`, '%Y-%m-%d %H:%i:%s') as modDate, up.`pro_no` AS proNo, 
                up.`origin`, up.`fileName`
         FROM `mini`.`user` AS u
-        LEFT JOIN `mini`.`user_pr` AS up ON u.`user_no` = up.`user_no`
-        WHERE u.`user_no` = '{user_no}'
-        ORDER BY up.modDate DESC LIMIT 1;
+        LEFT JOIN `mini`.`user_pr` AS up 
+           ON (u.`pro_no` = up.`pro_no`)
+        WHERE u.`user_no` = '{user_no}';
     """
   data = findOne(sql)
 
@@ -185,22 +209,20 @@ def usrt_view(payload = Depends(get_payload)):
 
 # ================= 회원 탈퇴(회원 삭제) =================
 @app.post("/userDelYn")
-def usrt_delYn(request: Request):
-  userInfo = request.cookies.get("userInfo")
-  if not userInfo:
+def usrt_delYn(payload = Depends(get_payload), response: Response = None):
+  if not payload:
     return {"status": False, "msg": "탈퇴에 실패하였습니다."}
   
-  userInfo = base64Decode(userInfo)
-  decoded = urllib.parse.unquote(userInfo)
-  data = json.loads(decoded)
+  user_no = payload.get("sub")
+  
   sql =f"""
       UPDATE mini.`user` 
-      SET `delYn` = '{data["delYn"]}' 
-      WHERE `user_no` = '{data["user_no"]}'
+      SET `delYn` = 1 
+      WHERE `user_no` = {user_no}
     """
-  if data: 
-    save(sql)
-  return {"status":data, "msg": "탈퇴 되었습니다.\n감사합니다. 안녕히 가십시오."}
+  save(sql)
+  response.delete_cookie(key="access_token")
+  return {"status":True, "msg": "탈퇴 되었습니다.\n감사합니다. 안녕히 가십시오."}
 
 # ================= 회원 정보 수정 =================
 @app.post("/userUpdate")
@@ -222,7 +244,8 @@ def usrt_delYn(request: Request):
     """
   if data: 
     save(sql)
-  return {"status":data, "msg": "수정이 완료되었습니다.\n감사합니다."}
+    return {"status": True, "msg": "수정이 완료되었습니다.\n감사합니다."}
+  return {"status": False, "msg": "수정에 실패하였습니다."}
 
 # ================= 프로필 최종 업로드 =================
 # 프로필 업로드시 필요한 부분
@@ -333,20 +356,26 @@ def code(model: CodeModel, response: Response):
 
 # ================= [로그인] : JWT → DB 기록 =================
 @app.post("/me")
-def me(payload = Depends(get_payload)):
-  print(payload)
-  if not payload:
-    return {"status" : False}
-  user_no = payload.get("sub")
-  sql = f"""
-        INSERT INTO mini.`login` (`user_no`)
-        VALUES ({user_no});
-      """
-  save(sql)
-  if payload:
-    print(user_no)
-    return {"status": True, "user" : user_no}
-  return {"status": False}
+def me(result = Depends(get_payload2)):
+  if result["status"]:
+    user_no = result["payload"].get("sub")
+    
+    sql = f"""
+      SELECT u.`user_no`, IFNULL(up.`fileName`, '') AS fileName
+        FROM  mini.`user` AS u 
+        LEFT OUTER JOIN mini.`user_pr` AS up
+          ON (u.`pro_no` = up.`pro_no`)
+        WHERE  u.`user_no` = '{user_no}'
+    """
+    data = findOne(sql)
+    if data:
+      sql = f"""
+            INSERT INTO mini.`login` (`user_no`)
+            VALUES ({user_no});
+          """
+      save(sql)
+      return {"status": True, "user" : user_no, "fileName": data['fileName']}
+  return result
 
 # 3. 게시판 관련 ====================================================================
 # ================= 메인화면(게시판 목록) =================
@@ -404,7 +433,7 @@ def board_add(data: BoardCreate, payload = Depends(get_payload)) :
 @app.get("/board/{no}")
 def get_board(no: int):
   sql = f"""
-    SELECT b.`board_no`, b.`title`, b.`cnt`, u.`name`, b.`regDate`, b.`user_no`
+    SELECT b.`board_no`, b.`title`, b.`cnt`, u.`name`, DATE_FORMAT(b.`regDate`, '%Y-%m-%d %H:%i:%s') as regDate, b.`user_no`
     FROM mini.`board` AS b
     JOIN mini.`user` AS u ON b.`user_no` = u.`user_no`
     WHERE b.`board_no` = {no} AND b.`delYn` = 0
