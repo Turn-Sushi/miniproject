@@ -1,4 +1,86 @@
 services:
+  app1:
+    container_name: app1
+    build:
+      context: .
+      dockerfile: dockerfile
+    image: uv:1
+    ports:
+      - 8301:8000
+    networks:
+      - my-bridge
+    depends_on:
+      - mariadb
+      - kafka
+      - redis
+    working_dir: /workspace
+    volumes:
+      - ./app1/main.py:/workspace/main.py:rw
+      - ./app1/src:/workspace/src:rw
+      - ./app1/pyproject.toml:/workspace/pyproject.toml:ro
+      - ./app1/uv.lock:/workspace/uv.lock:rw
+      - ./app1/.env:/workspace/.env:rw
+      - uploads:/workspace/uploads:rw
+    command: ["sleep", "infinity"]
+
+  app2:
+    container_name: app2
+    image: uv:1
+    ports:
+      - 8302:8000
+    networks:
+      - my-bridge
+    depends_on:
+      - mariadb
+      - kafka
+      - redis
+    working_dir: /workspace
+    volumes:
+      - ./app2/main.py:/workspace/main.py:rw
+      - ./app2/src:/workspace/src:rw
+      - ./app2/pyproject.toml:/workspace/pyproject.toml:ro
+      - ./app2/uv.lock:/workspace/uv.lock:rw
+      - ./app2/.env:/workspace/.env:rw
+    command: ["sleep", "infinity"]
+
+  app3:
+    container_name: app3
+    image: node:24.13.0
+    ports:
+      - 8300:5173
+    networks:
+      - my-bridge
+    working_dir: /workspace
+    volumes:
+      - ./app3/public:/workspace/public:ro
+      - ./app3/src:/workspace/src:rw
+      - ./app3/eslint.config.js:/workspace/eslint.config.js:ro
+      - ./app3/index.html:/workspace/index.html:ro
+      - ./app3/package.json:/workspace/package.json:ro
+      - ./app3/vite.config.js:/workspace/vite.config.js:ro
+      - ./app3/.env:/workspace/.env:rw
+    command: ["sleep", "infinity"]
+  
+  mariadb:
+    container_name: mariadb3
+    image: mariadb:12.1.2
+    restart: always
+    ports:
+      - 8306:3306
+    networks:
+      - my-bridge
+    volumes:
+      - ./mariadb/conf.d:/etc/mysql/conf.d:ro
+      - ./mariadb/initdb.d:/docker-entrypoint-initdb.d:ro
+      - mysql:/var/lib/mysql:rw
+    environment:
+      - MARIADB_HOST=localhost
+      - MARIADB_PORT=3306
+      - MARIADB_ROOT_PASSWORD=1234
+      - MARIADB_DATABASE=mini
+      - TZ=Asia/Seoul
+      - LC_ALL:en_US.UTF-8
+  
   kafka:
     container_name: kafka
     image: apache/kafka:4.0.1
@@ -29,79 +111,6 @@ services:
       - 6379:6379
     networks:
       - my-bridge
-
-  app1:
-    container_name: app1
-    image: uv:1
-    ports:
-      - 8001:8000
-    networks:
-      - my-bridge
-    depends_on:
-      - mariadb
-    working_dir: /workspace
-    volumes:
-      - ./app1/main.py:/workspace/main.py:rw
-      - ./app1/settings.py:/workspace/settings.py:ro
-      - ./app1/db.py:/workspace/db.py:ro
-      - ./app1/pyproject.toml:/workspace/pyproject.toml:ro
-      - ./app1/uv.lock:/workspace/uv.lock:ro
-      - uploads:/workspace/uploads:rw
-    command: ["sleep", "infinity"]
-
-  app2:
-    container_name: app2
-    image: uv:1
-    ports:
-      - 8002:8000
-    networks:
-      - my-bridge
-    depends_on:
-      - kafka
-      - redis
-      - mariadb
-    working_dir: /workspace
-    volumes:
-      - ./app2:/workspace
-    command: ["sleep", "infinity"]
-    # command: ["uv", "run", "fastapi", "run"]
-
-  app3:
-    container_name: app3
-    image: node:24.13.0
-    ports:
-      - 80:5173
-    networks:
-      - my-bridge
-    working_dir: /workspace
-    volumes:
-      - ./app3/public:/workspace/public:ro
-      - ./app3/src:/workspace/src:rw
-      - ./app3/eslint.config.js:/workspace/eslint.config.js:ro
-      - ./app3/index.html:/workspace/index.html:ro
-      - ./app3/package.json:/workspace/package.json:ro
-      - ./app3/vite.config.js:/workspace/vite.config.js:ro
-    command: ["sleep", "infinity"]
-  
-  mariadb:
-    container_name: mariadb
-    image: mariadb:12.1.2
-    restart: always
-    ports:
-      - 3306:3306
-    networks:
-      - my-bridge
-    volumes:
-      - ./mariadb/conf.d:/etc/mysql/conf.d:ro
-      - ./mariadb/initdb.d:/docker-entrypoint-initdb.d:ro
-      - mysql:/var/lib/mysql:rw
-    environment:
-      - MARIADB_HOST=localhost
-      - MARIADB_PORT=3306
-      - MARIADB_ROOT_PASSWORD=1234
-      - MARIADB_DATABASE=mini
-      - TZ=Asia/Seoul
-      - LC_ALL:en_US.UTF-8
 
 networks:
   my-bridge:
