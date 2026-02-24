@@ -11,9 +11,12 @@ const SignUp = () => {
   const [isEmailChecked, setIsEmailChecked] = useState(false)
 
 
+  // URL을 변경하기 위한 선언 
+  const API_URL = import.meta.env.VITE_APP_FASTAPI_URL
+  
   const emailCheckBtn = e => {
     e.preventDefault()
-    axios.post("http://localhost:8001/emailCheck", {"email":email})
+    axios.post(`${API_URL}/emailCheck`, {"email":email})
     .then(res=>{ 
       alert(res.data.msg)
       if (res.data.status) {
@@ -38,7 +41,7 @@ const SignUp = () => {
     }
     // console.log(params)
 
-    axios.post("http://localhost:8001/signup", params)
+    axios.post(`${API_URL}/signup`, params)
     .then(res=>{
       alert(res.data.msg)
       if (res.data.status == true) navigate("/login")

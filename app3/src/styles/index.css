@@ -65,3 +65,7 @@
     }
 }
 
+a.nav-a, .btn-a {
+    text-decoration: none !important;
+    color: inherit;
+}
